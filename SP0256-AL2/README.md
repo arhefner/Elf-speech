@@ -137,11 +137,14 @@ int main(void) {
 | `void say_init(port_t port, byte ef)` | Set the port of the chip, as `PORT(group, index)`, and the EF line of LRQ, 1 to 4. Optional. |
 | `void say_allophone(byte allophone)` | Speak one allophone, 0 to 63, once the chip can take it. |
 | `void say(const byte *phrase)` | Speak allophones up to the byte with bit 7 set that ends the phrase. |
+| `bool say_ready(void)` | True when the chip can take an allophone, so that `say_allophone` would not wait. |
 | `int say_lookup(const char *name)` | The number of an allophone from its name, in any case, or -1. |
 | `char *say_name(byte allophone)` | The name of an allophone. |
 
 The functions return as soon as the chip has the last allophone, while it is
-still speaking it.
+still speaking it. A program can do other work while the chip speaks, and
+give it the next allophone when `say_ready` is true, as `cts256` of
+[CTS256A-AL2](../CTS256A-AL2) does.
 
 The library calls only `gpio.lib`, which makes no BIOS or operating system
 calls, so it works the same under Elf/OS and ELF-DOS.

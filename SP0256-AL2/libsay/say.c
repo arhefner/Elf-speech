@@ -33,6 +33,11 @@ static bool say_busy(void) {
   return ef4_asserted();
 }
 
+/* True when the chip can take an allophone, LRQ is low. */
+bool say_ready(void) {
+  return !say_busy();
+}
+
 /* Speak one allophone, once the chip can take it. */
 void say_allophone(byte allophone) {
   while (say_busy())

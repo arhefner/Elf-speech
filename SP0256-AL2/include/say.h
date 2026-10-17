@@ -55,6 +55,13 @@ void say_init(port_t port, byte ef);
  */
 void say_allophone(byte allophone);
 
+/*
+ * True when the chip can take an allophone, so that say_allophone
+ * would not wait.  A program can do other work while the chip speaks,
+ * and give it the next allophone when this is true.
+ */
+bool say_ready(void);
+
 /* speak a phrase, up to the byte with bit 7 set that ends it */
 void say(const byte *phrase);
 
