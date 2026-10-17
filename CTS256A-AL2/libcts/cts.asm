@@ -24,6 +24,10 @@
 ;
 ; See cts.h for what they do.
 ;
+; The branches are short where the target is on the same page, which
+; needs Link/02 1.14 or later for the short branches past the first page
+; of the procedure.
+;
 ; THE INPUT
 ;
 ; The text is kept as the chip keeps it: the characters in upper case,
@@ -185,7 +189,7 @@ clear:      ldi   0
             str   rd
             inc   rd
             glo   rd
-            lbnz  clear
+            bnz   clear
 
             ldi   ring.1                ; the chip starts with a space
             phi   rd
@@ -265,26 +269,26 @@ Ccts_finish: sex  r2
 
 feed:       glo   rf                    ; make a-z upper case
             smi   'a'
-            lbnf  upper
+            bnf   upper
             smi   26
-            lbdf  upper
+            bdf   upper
             glo   rf
             smi   20h
             plo   rf
 
 upper:      glo   rf                    ; ' does not end a word
             xri   27h
-            lbz   stored
+            bz    stored
             glo   rf                    ; nor do 0-9
             smi   '0'
-            lbnf  ends
+            bnf   ends
             smi   10
-            lbnf  stored
+            bnf   stored
             glo   rf                    ; nor A-Z [\]^_` {
             smi   'A'
-            lbnf  ends
+            bnf   ends
             smi   '{'-'A'+1
-            lbnf  stored
+            bnf   stored
 
 ends:       glo   rf                    ; but all other characters do
             ori   80h
@@ -306,7 +310,7 @@ stored:     ldi   vars.1                ; put it in the ring
 
             glo   rf                    ; the end of a word?
             ani   80h
-            lbnz  wordend
+            bnz   wordend
 
             ldi   v_rd.0                ; no, but is the word too long?
             plo   r8
@@ -315,7 +319,7 @@ stored:     ldi   vars.1                ; put it in the ring
             glo   rd
             sm
             smi   LONGEST
-            lbnf  sentinel
+            bnf   sentinel
 
             ldi   ring.1                ; then end it with a CR, as the chip
             phi   rd                    ;  does when its buffer is full,
@@ -330,7 +334,7 @@ stored:     ldi   vars.1                ; put it in the ring
             plo   r8
             glo   rd
             str   r8
-            lbr   newprev
+            br    newprev
 
 wordend:    ldi   v_prev.0              ; convert the words before this one
             plo   r8
@@ -392,7 +396,7 @@ Ccts_step:  sex   r2
             str   r2                    ; wr - rd
             glo   rf
             sm
-            lbnf  convert
+            bnf   convert
 
             ldi   0ffh                  ; no, return -1
             phi   ra
@@ -444,16 +448,16 @@ convert:    glo   r9                    ; save the registers of ElfC,
             ldi   v_word.0              ; at the start of a word, look
             plo   r8                    ;  for it in the exceptions
             ldn   r8
-            lbz   byrules
+            bz    byrules
             ldi   v_exc.0
             plo   r8
             lda   r8
             phi   rf
             ldn   r8
             plo   rf
-            lbnz  except
+            bnz   except
             ghi   rf
-            lbz   byrules
+            bz    byrules
 
 except:     ldi   v_start.0             ; remember where the word starts
             plo   r8
@@ -464,7 +468,7 @@ except:     ldi   v_start.0             ; remember where the word starts
             dw    first
 
             smi   26                    ; the digits share the list
-            lbnf  excidx                ;  of the other characters
+            bnf   excidx                ;  of the other characters
             ldi   0
 excidx:     adi   26                    ; the address of the list, low
             shl                         ;  byte first
@@ -487,7 +491,7 @@ excidx:     adi   26                    ; the address of the list, low
             plo   rb
             sep   scall
             dw    apply
-            lbdf  done
+            bdf   done
 
             ldi   vars.1                ; not an exception, so convert it
             phi   r8                    ;  with the rules
@@ -588,7 +592,7 @@ Ccts_poll:  sex   r2
 poll:       ldi   v_hook.0
             plo   r8
             ldn   r8
-            lbz   nopoll
+            bz    nopoll
 
             glo   rf                    ; save the registers
             stxd
@@ -689,9 +693,9 @@ first:      glo   rd                    ; the left context starts before it
             plo   re
             ani   0dfh
             smi   'A'
-            lbnf  notlet
+            bnf   notlet
             smi   26
-            lbdf  notlet
+            bdf   notlet
             adi   26                    ; yes, the list is A to Z
             plo   re
             glo   rb
@@ -702,9 +706,9 @@ first:      glo   rd                    ; the left context starts before it
 
 notlet:     glo   re                    ; a digit?
             smi   '0'
-            lbnf  other
+            bnf   other
             smi   10
-            lbdf  other
+            bdf   other
             ldi   26
             sep   sret
 
@@ -725,7 +729,7 @@ try:        ldi   v_poll.0              ; time to call the poll function?
             ldn   r8
             smi   1
             str   r8
-            lbnz  trybr
+            bnz   trybr
             ldi   POLLRULES
             str   r8
             sep   scall
@@ -733,20 +737,20 @@ try:        ldi   v_poll.0              ; time to call the poll function?
 
 trybr:      sep   scall                 ; do the brackets match?
             dw    brackets
-            lbdf  inbrackets
+            bdf   inbrackets
 
 next2:      inc   rf                    ; no, the brackets of the next rule
             ldi   2
             sep   scall
             dw    find
-            lbr   try
+            br    try
 
 inbrackets: glo   rb                    ; the end of a list of exceptions?
             ani   F_EXC
-            lbz   rightctx
+            bz    rightctx
             ldn   rf
             xri   0ffh
-            lbnz  rightctx
+            bnz   rightctx
             adi   0                     ; yes, return DF clear
             sep   sret
 
@@ -760,31 +764,31 @@ rightctx:   ldi   v_ls.0                ; remember where the left context is
             plo   rb
             sep   scall
             dw    context
-            lbdf  back
+            bdf   back
 
             sep   scall                 ; no match, try the next rule
             dw    restore
-            lbr   next2
+            br    next2
 
 back:       ldn   rf                    ; back to the start of the brackets
             ani   40h
-            lbnz  leftctx
+            bnz   leftctx
             dec   rf
-            lbr   back
+            br    back
 
 leftctx:    glo   rb                    ; match the left context
             ori   F_LEFT
             plo   rb
             sep   scall
             dw    context
-            lbdf  matched
+            bdf   matched
 
             sep   scall                 ; no match, try the rule after
             dw    restore               ;  the brackets and allophones
             ldi   3
             sep   scall
             dw    find
-            lbr   try
+            br    try
 
 matched:    ldi   2                     ; the allophones of the rule
             sep   scall
@@ -795,10 +799,10 @@ matched:    ldi   2                     ; the allophones of the rule
 allo:       lda   rf                    ; copy them
             plo   re
             xri   0ffh
-            lbz   applied
+            bz    applied
             ghi   rb
             smi   MAXALLO
-            lbdf  full
+            bdf   full
             glo   re
             ani   3fh
             str   r9
@@ -808,7 +812,7 @@ allo:       lda   rf                    ; copy them
             phi   rb
 full:       glo   re
             ani   80h
-            lbz   allo
+            bz    allo
 
 applied:    ldi   vars.1                ; carry on after the brackets
             phi   r8
@@ -841,13 +845,13 @@ restore:    ldi   vars.1
 find:       plo   re
 findnext:   ldn   rf
             ani   40h
-            lbz   findskip
+            bz    findskip
             glo   re
             smi   1
             plo   re
-            lbz   found
+            bz    found
 findskip:   inc   rf
-            lbr   findnext
+            br    findnext
 found:      sep   sret
 
 
@@ -863,11 +867,11 @@ brackets:   ldi   v_rs.0                ; remember where the text was
 
             ldn   rf                    ; a letter on its own?
             xri   0ffh
-            lbz   bmatch
+            bz    bmatch
 
             glo   rb                    ; the brackets of the other
             ani   F_LETTER              ;  characters have the first one
-            lbnz  bnext
+            bnz   bnext
             dec   rd
             ldi   ring.1
             phi   rd
@@ -888,9 +892,9 @@ bnext:      lda   rd                    ; the code of the next character
 
             ldn   rf                    ; yes, the last one?
             ani   80h
-            lbnz  bmatch
+            bnz   bmatch
             inc   rf
-            lbr   bnext
+            br    bnext
 
 bmatch:     ldi   v_re.0                ; they match
             plo   r8
@@ -912,7 +916,7 @@ bfail:      ldi   v_rs.0                ; they do not
 
 tocode:     ani   7fh
             smi   61h
-            lbdf  tclower
+            bdf   tclower
             adi   41h
             sep   sret
 tclower:    adi   21h
@@ -924,10 +928,10 @@ tclower:    adi   21h
 
 nextch:     glo   rb
             ani   F_LEFT
-            lbz   nright
+            bz    nright
             ldn   rc
             dec   rc
-            lbr   ncode
+            br    ncode
 nright:     lda   rd
 ncode:      plo   re
             ldi   ring.1
@@ -936,16 +940,16 @@ ncode:      plo   re
             glo   re
             ani   7fh
             smi   61h
-            lbdf  nlower
+            bdf   nlower
             adi   41h
-            lbr   nclass
+            br    nclass
 nlower:     adi   21h
 nclass:     plo   ra
 
             smi   21h                   ; the class of a letter
-            lbnf  nonlet
+            bnf   nonlet
             smi   26
-            lbdf  nonlet
+            bdf   nonlet
             adi   (classes+26).0
             plo   r8
             ldn   r8
@@ -961,9 +965,9 @@ nonlet:     ldi   0                     ; and of anything else
 
 unread:     glo   rb
             ani   F_LEFT
-            lbz   unright
+            bz    unright
             inc   rc
-            lbr   unring
+            br    unring
 unright:    dec   rd
 unring:     ldi   ring.1
             phi   rd
@@ -979,7 +983,7 @@ skip:       sep   scall
             str   r2
             ghi   rb
             and
-            lbnz  skip
+            bnz   skip
             sep   scall
             dw    unread
             sep   sret
@@ -1003,12 +1007,12 @@ raw:        lda   rd
 
 context:    glo   rb
             ani   F_LEFT
-            lbz   cright
+            bz    cright
 
             dec   rf                    ; the next byte to the left, the
             ldn   rf                    ;  end of the allophones of the
             ani   80h                   ;  rule before ends it
-            lbz   cchar
+            bz    cchar
             inc   rf
             smi   0
             sep   sret
@@ -1016,7 +1020,7 @@ context:    glo   rb
 cright:     inc   rf                    ; the next byte to the right, the
             ldn   rf                    ;  start of the allophones ends it
             ani   40h
-            lbz   cchar
+            bz    cchar
             dec   rf
             smi   0
             sep   sret
@@ -1029,30 +1033,30 @@ cchar:      sep   scall                 ; read a character of the text
 
             ldn   rf                    ; a character to match?
             xri   07h
-            lbz   cliteral
+            bz    cliteral
             ldn   rf
             smi   P_LITERAL
-            lbnf  cpattern
+            bnf   cpattern
 
 cliteral:   glo   ra                    ; then it is that character
             str   r2
             ldn   rf
             xor
-            lbz   context
-            lbr   cfail
+            bz    context
+            br    cfail
 
 cpattern:   ldn   rf                    ; otherwise a pattern
             xri   P_NONLET
-            lbz   pnonlet
+            bz    pnonlet
             ldn   rf
             xri   P_CONS0
-            lbz   pcons0
+            bz    pcons0
             ldn   rf
             xri   P_VOWELS
             lbz   pvowels
             ldn   rf
             xri   P_CONS1
-            lbz   pcons1
+            bz    pcons1
             ldn   rf
             xri   P_CONS
             lbz   pcons
@@ -1070,34 +1074,34 @@ cpattern:   ldn   rf                    ; otherwise a pattern
             lbz   pback
             ldn   rf
             xri   P_VOWELS2
-            lbz   pvowels2
+            bz    pvowels2
             ldn   rf
             xri   P_SIBIL
             lbz   psibil
             ldn   rf
             xri   P_LONGU
             lbz   plongu
-            lbr   cfail                 ; the chip goes astray on others
+            br    cfail                 ; the chip goes astray on others
 
 pnonlet:    ghi   ra                    ; < anything but a letter
-            lbnz  cfail
-            lbr   context
+            bnz   cfail
+            br    context
 
 pcons0:     ghi   ra                    ; : zero or more consonants
             ani   C_CONS
-            lbnz  pskipcons
+            bnz   pskipcons
             sep   scall
             dw    unread
-            lbr   context
+            br    context
 
 pcons1:     ghi   ra                    ; * one or more consonants
             ani   C_CONS
-            lbz   cfail
+            bz    cfail
 pskipcons:  ldi   C_CONS
 pskip:      phi   rb
             sep   scall
             dw    skip
-            lbr   context
+            br    context
 
 pvowels2:   ghi   ra                    ; ? two or more vowels
             ani   C_VOWEL
@@ -1111,11 +1115,11 @@ pvowels:    ghi   ra                    ; # one or more vowels
             lbr   pskip
 
 pcons:      ldi   C_CONS                ; ^ one consonant
-            lbr   pclass
+            br    pclass
 pfront:     ldi   C_FRONT               ; + E I Y
-            lbr   pclass
+            br    pclass
 pvoiced:    ldi   C_VOICED              ; . B D G J L M N R V W Z
-            lbr   pclass
+            br    pclass
 pback:      ldi   C_BACK                ; > O U
 pclass:     str   r2
             ghi   ra
@@ -1127,7 +1131,7 @@ psibil:     ghi   ra                    ; & C G J S X Z, or CH SH
             ani   C_SIBIL
             lbnz  context
             ldi   23h                   ; (C again)
-            lbr   digraph
+            br    digraph
 
 plongu:     ghi   ra                    ; @ D J L N R S T Z, or TH CH SH
             ani   C_LONGU
@@ -1150,10 +1154,10 @@ digraph:    plo   re
             dw    nextch
             glo   ra
             xri   23h                   ; C
-            lbz   dgh
+            bz    dgh
             glo   ra
             xri   33h                   ; S
-            lbz   dgh
+            bz    dgh
             ldi   v_other.0
             plo   r8
             ldn   r8
@@ -1177,46 +1181,46 @@ dgh:        glo   rc                    ; then H at RC + 2, and the text
 
 psuffix:    ghi   ra                    ; E?
             ani   C_E
-            lbz   sufnote
+            bz    sufnote
             sep   scall
             dw    raw
             xri   'R'
-            lbnz  sufnotr
+            bnz   sufnotr
             sep   scall                 ; ER, ERS
             dw    raw
             xri   'S'
-            lbz   sufend
-            lbr   sufback
+            bz    sufend
+            br    sufback
 sufnotr:    ghi   ra                    ; ELY
             xri   'L'
-            lbnz  sufnotl
+            bnz   sufnotl
             sep   scall
             dw    raw
             xri   'Y'
             lbnz  cfail
-            lbr   sufend
+            br    sufend
 sufnotl:    ghi   ra                    ; ES, ED
             xri   'S'
-            lbz   sufend
+            bz    sufend
             ghi   ra
             xri   'D'
-            lbz   sufend
+            bz    sufend
 sufback:    dec   rd                    ; E
             ldi   ring.1
             phi   rd
-            lbr   sufend
+            br    sufend
 
 sufnote:    glo   ra                    ; ING
             xri   'I'-20h
-            lbnz  sufnoti
+            bnz   sufnoti
             sep   scall
             dw    raw
             xri   'N'
             lbnz  cfail
-            lbr   sufg
+            br    sufg
 sufnoti:    glo   ra                    ; MENT
             xri   'M'-20h
-            lbnz  sufnotm
+            bnz   sufnotm
             sep   scall
             dw    raw
             xri   'E'
@@ -1226,12 +1230,12 @@ sufnoti:    glo   ra                    ; MENT
             xri   'N'
             lbnz  cfail
             ldi   'T'
-            lbr   suflast
+            br    suflast
 sufnotm:    glo   ra                    ; OR
             xri   'O'-20h
             lbnz  cfail
             ldi   'R'
-            lbr   suflast
+            br    suflast
 sufg:       ldi   'G'
 suflast:    plo   re
             ldi   v_other.0

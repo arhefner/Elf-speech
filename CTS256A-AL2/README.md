@@ -36,7 +36,9 @@ make SAY_GROUP=0 SAY_INDEX=4 SAY_EF=3
 You need ElfC on the path, with the
 [ELFC-GPIO](https://github.com/arhefner/ELFC-GPIO) and
 [ELFC-conio](https://github.com/arhefner/ELFC-conio) libraries installed in
-it, as for [SP0256-AL2](../SP0256-AL2), and Asm/02.
+it, as for [SP0256-AL2](../SP0256-AL2), and Asm/02. `cts.lib` needs Link/02
+1.14 or later, which links short branches more than 256 bytes into a
+procedure.
 
 ```
 make                     build the say library, cts.lib and cts256 for Elf/OS
@@ -96,8 +98,8 @@ conio library.
 The allophones are given to the chip while the text after them is being
 converted, every few rules, as the chip does with an interrupt, so the
 speech does not stop between words. At 4 MHz the SP0256-AL2 is never kept
-waiting. At 1.79 MHz it waits now and then, for up to 30 ms, mostly in the
-pauses: in the Run/02 emulator, 12 times in two minutes of speech.
+waiting. At 1.79 MHz it waits now and then, for up to 25 ms, mostly in the
+pauses: in the Run/02 emulator, 9 times in two minutes of speech.
 
 ## How text is converted
 
@@ -200,7 +202,7 @@ while ((n = cts_step(allo)) >= 0)
 
 The conversion takes about 1800 instructions a character, about 20 ms at
 1.79 MHz, and the speech about 100 ms a character, so there is time to
-spare. The library is 4K: the 2K of rules, the code and a 256 byte ring
+spare. The library is 3.7K: the 2K of rules, the code and a 256 byte ring
 for the text, which keeps what the rules look at before and after a word.
 
 ## How it was made, and tested
@@ -242,9 +244,6 @@ how long it waits.
 
 ## Notes
 
-* Link/02 checks a short branch as if its target were on the first page of
-  its procedure, so it rejects good short branches after the first 256
-  bytes. `cts.asm` uses only long branches because of this.
 * The procedure of `cts.lib` is aligned to a page, for the ring of the
   text, so a program has up to 255 bytes of padding before it.
 * ElfC does not take a char as an array index, so the ring is in assembly
