@@ -317,14 +317,13 @@ measured, see Speed.
 
 ## Notes
 
-* `-O` of ElfC, the branch optimization of Link/02 `-r`, needs a Link/02
-  newer than the fix of 2026-10-19. Before it, Link/02 paired each `v`
-  record, the low byte of a local address as in `ldi v_wr.0`, with a `^`
-  record next to it in the list, also one of another address, as
-  `^0999 v09a3` in `cts.prg`, and so wrote the low byte of the wrong
-  address, which breaks `cts.lib` and `dict.lib`. With an older Link/02,
-  take `-O` out of `CFLAGS` in `programs/Makefile`: `tts` is then 1K
-  bigger, and says the same.
+* `-O` of ElfC, the branch optimization of Link/02 `-r`, needs Link/02
+  1.14 or later. Before it, Link/02 paired each `v` record, the low byte
+  of a local address as in `ldi v_wr.0`, with a `^` record next to it in
+  the list, also one of another address, as `^0999 v09a3` in `cts.prg`,
+  and so wrote the low byte of the wrong address, which breaks `cts.lib`
+  and `dict.lib`. With an older Link/02, take `-O` out of `CFLAGS` in
+  `programs/Makefile`: `tts` is then 1K bigger, and says the same.
 * ElfC can not initialize an array of pointers with the addresses of
   arrays, but it can with strings, so the words of the numbers are tables
   of strings, which are looked up in the dictionary.

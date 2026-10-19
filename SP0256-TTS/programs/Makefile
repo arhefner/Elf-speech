@@ -5,9 +5,9 @@ SAY := ../../SP0256-AL2
 CTS := ../../CTS256A-AL2
 
 # -M links the smaller stdlib and stdio of ElfC, and -O shortens the long
-# branches, so that tts fits in 32K.  -O needs a Link/02 that places the
-# low bytes of local addresses (v records) right when it relaxes a proc,
-# as cts.lib and dict.lib have them, see the README.
+# branches, so that tts fits in 32K.  -O needs Link/02 1.14 or later,
+# which places the low bytes of local addresses (v records) of cts.lib and
+# dict.lib right when it relaxes a proc, see the README.
 CFLAGS := -M -O -i ../include -i $(SAY)/include -i $(CTS)/include \
           -l ../lib -l $(SAY)/lib -l $(CTS)/lib
 
