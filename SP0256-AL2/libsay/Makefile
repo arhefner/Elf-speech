@@ -20,7 +20,7 @@ $(TARGET): $(OBJS)
 	mkdir -p ../lib
 	cat $^ > ../lib/$@
 
-%.prg: %.c say_int.h ../include/say.h
+%.prg: %.c say_int.h ../include/say.h ../include/saynumber.h ../include/allophones.h
 	$(CC) $(CFLAGS) $<
 
 clean:

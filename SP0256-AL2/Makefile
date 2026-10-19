@@ -27,14 +27,16 @@ all: programs
 
 libs:
 	$(MAKE) -C libsay
+	$(MAKE) -C libface
 
 programs: libs
 	$(MAKE) -C programs
 
 install: libs
-	cp lib/say.lib $(ELFC_DIR)/lib/
-	cp include/say.h include/allophones.h $(ELFC_DIR)/include/
+	cp lib/say.lib lib/face.lib $(ELFC_DIR)/lib/
+	cp include/say.h include/allophones.h include/saynumber.h include/face.h $(ELFC_DIR)/include/
 
 clean:
 	$(MAKE) -C libsay clean
+	$(MAKE) -C libface clean
 	$(MAKE) -C programs clean
