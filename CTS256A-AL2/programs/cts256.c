@@ -17,6 +17,11 @@
  * chip.  The allophones are spoken while the text after them is being
  * converted, as on the chip.
  *
+ * cts256face.c builds this with FACE defined, as cts256face, which shows
+ * the talking face of face.h on the OLED display as it speaks.  Without
+ * the face, cts256 is small enough for a 32K Elf: it prints with cputs
+ * and not printf, which would add 3K.
+ *
  * Build for Elf/OS with:   make
  * Build for ELF-DOS with:  make TARGET_OS=elfdos
  */
@@ -27,10 +32,39 @@
 #include <say.h>
 #include <cts.h>
 
-/* the size of a line typed at the console */
-#define LINE_SIZE  128
+#ifdef FACE
+#include <face.h>
 
-/* the history of the lines typed at the console */
+/* the ports of the SPI adapter of the display, as on the 1802/MAX */
+#ifndef SPI_GROUP
+#define SPI_GROUP  0
+#endif
+#ifndef SPI_CTL
+#define SPI_CTL    2
+#endif
+#ifndef SPI_DATA
+#define SPI_DATA   3
+#endif
+
+/* give the chip an allophone, and move the mouth */
+#define SPEAK(a)  face_allophone(a)
+#define NAME      "cts256face"
+#else
+#define SPEAK(a)  say_allophone(a)
+#define NAME      "cts256"
+#endif
+
+/*
+ * The size of a line typed at the console.  cts256 reads it with gets,
+ * which reads up to 255 characters, and cts256face with cgetline.
+ */
+#ifdef FACE
+#define LINE_SIZE  128
+#else
+#define LINE_SIZE  256
+#endif
+
+/* the history of the lines typed at the console, for cgetline */
 #define HISTORY_SIZE  512
 
 /* the allophones waiting to be spoken */
@@ -62,27 +96,38 @@ static int outlen;
 static byte *exceptions[27];
 
 static char line[LINE_SIZE];
+#ifdef FACE
 static char last[LINE_SIZE];
 static char history[HISTORY_SIZE];
+#endif
 
 /*
  * Give the chip the next allophone if it can take it.  It is called
- * between the rules and, by cts_step, while it converts.
+ * after each allophone and, by cts_step, while it converts.  With the
+ * face, the mouth is moved when the chip begins an allophone, also if
+ * there is no next one to give it yet.
  */
 static int pump(void) {
   if (qr != qw && say_ready()) {
-    say_allophone(queue[qr]);
+    SPEAK(queue[qr]);
     qr = (qr + 1) & (QUEUE_SIZE - 1);
   }
+#ifdef FACE
+  else
+    face_poll();
+#endif
   return 0;
 }
 
-/* speak all the allophones that are waiting */
+/* speak all the allophones that are waiting, and close the mouth */
 static void drain(void) {
   while (qr != qw) {
-    say_allophone(queue[qr]);
+    SPEAK(queue[qr]);
     qr = (qr + 1) & (QUEUE_SIZE - 1);
   }
+#ifdef FACE
+  face_done();
+#endif
 }
 
 /* an allophone of the text */
@@ -101,10 +146,11 @@ static void emit(byte a) {
   if (print) {
     s = say_name(a);
     if (column > 72) {
-      printf("\n");
+      cputs("\r\n");
       column = 0;
     }
-    printf("%s ", s);
+    cputs(s);
+    cputs(" ");
     column += strlen(s) + 1;
   }
 
@@ -112,7 +158,7 @@ static void emit(byte a) {
     n = (qw + 1) & (QUEUE_SIZE - 1);
     if (n == qr) {
       /* the queue is full, wait for the chip */
-      say_allophone(queue[qr]);
+      SPEAK(queue[qr]);
       qr = (qr + 1) & (QUEUE_SIZE - 1);
     }
     queue[qw] = a;
@@ -128,7 +174,6 @@ static void convert(void) {
   while ((n = cts_step(allo)) >= 0) {
     for (i = 0; i < n; i++)
       emit(allo[i]);
-    pump();
   }
 }
 
@@ -143,7 +188,7 @@ static void finish(void) {
   cts_finish();
   convert();
   if (print && column > 0) {
-    printf("\n");
+    cputs("\r\n");
     column = 0;
   }
 }
@@ -173,10 +218,14 @@ static bool feed_file(char *name) {
   return true;
 }
 
-/* speak the lines typed at the console, until Ctrl-C */
+#ifdef FACE
+/*
+ * Speak the lines typed at the console, until Ctrl-C.  They are edited
+ * and recalled with cgetline of the conio library.
+ */
 static void feed_console(void) {
-  printf("CTS256A-AL2 text to speech\n");
-  printf("Type text to speak, Enter to repeat, Ctrl-C to quit\n");
+  cputs("CTS256A-AL2 text to speech\r\n");
+  cputs("Type text to speak, Enter to repeat, Ctrl-C to quit\r\n");
 
   cgethistory(history, HISTORY_SIZE);
   for (;;) {
@@ -190,6 +239,28 @@ static void feed_console(void) {
     drain();
   }
 }
+#else
+/*
+ * Speak the lines typed at the console, until an empty one.  They are
+ * read with gets, the line input of the operating system, as cgetline
+ * would not leave room on a 32K Elf for an exception EPROM image.
+ */
+static void feed_console(void) {
+  cputs("CTS256A-AL2 text to speech\r\n");
+  cputs("Type text to speak, an empty line to quit\r\n");
+
+  for (;;) {
+    cputs("> ");
+    gets(line);
+    cputs("\r\n");
+    if (line[0] == 0)
+      break;
+    feed_string(line);
+    finish();
+    drain();
+  }
+}
+#endif
 
 /* read 16 bits, high byte first */
 static unsigned int get16(byte *p) {
@@ -250,14 +321,22 @@ static char *load_exceptions(char *name) {
   return NULL;
 }
 
+/* print a message about a file */
+static void message(char *msg, char *name) {
+  cputs(msg);
+  cputs(" ");
+  cputs(name);
+  cputs("\r\n");
+}
+
 static void usage(void) {
-  printf("Usage: cts256 [-x file] [-o file] [-p] [-q] [text ...]\n");
-  printf("       cts256 [-x file] [-o file] [-p] [-q] -f file\n");
-  printf("  -f file  speak the text of a file\n");
-  printf("  -x file  use the exception words of an EPROM image\n");
-  printf("  -o file  write the allophones to a phrase file\n");
-  printf("  -p       print the allophones\n");
-  printf("  -q       do not speak\n");
+  cputs("Usage: " NAME " [-x file] [-o file] [-p] [-q] [text ...]\r\n");
+  cputs("       " NAME " [-x file] [-o file] [-p] [-q] -f file\r\n");
+  cputs("  -f file  speak the text of a file\r\n");
+  cputs("  -x file  use the exception words of an EPROM image\r\n");
+  cputs("  -o file  write the allophones to a phrase file\r\n");
+  cputs("  -p       print the allophones\r\n");
+  cputs("  -q       do not speak\r\n");
   exit(1);
 }
 
@@ -313,27 +392,32 @@ int main(int argc, char *argv[]) {
   if (xname != NULL) {
     msg = load_exceptions(xname);
     if (msg != NULL) {
-      printf("%s %s\n", msg, xname);
+      message(msg, xname);
       return 1;
     }
     cts_init(exceptions);
   }
   else
     cts_init(NULL);
-  if (speak)
+  if (speak) {
+#ifdef FACE
+    /* the face moves with the speech, so there is none without it */
+    face_init(PORT(SPI_GROUP, SPI_CTL), PORT(SPI_GROUP, SPI_DATA));
+#endif
     cts_poll(pump);
+  }
 
   if (oname != NULL) {
     out = open(oname, O_WRONLY | O_CREAT | O_TRUNC);
     if (out < 0) {
-      printf("Can not create %s\n", oname);
+      message("Can not create", oname);
       return 1;
     }
   }
 
   if (text != NULL) {
     if (!feed_file(text)) {
-      printf("File not found: %s\n", text);
+      message("File not found:", text);
       return 1;
     }
   }

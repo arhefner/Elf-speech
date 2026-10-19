@@ -9,3 +9,4 @@ lib/
 programs/*.asm
 programs/cts256
 tools/__pycache__/
+programs/cts256face

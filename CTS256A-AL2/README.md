@@ -15,7 +15,8 @@ exception words of an exception EPROM of the chip.
 
 | | |
 |-|-|
-| `cts256` | Speaks text, a text file or lines typed at the console, or writes the allophones to a phrase file. |
+| `cts256` | Speaks text, a text file or lines typed at the console, or writes the allophones to a phrase file. It fits on an Elf with 32K of RAM. |
+| `cts256face` | `cts256` with a talking face on an OLED display, whose mouth moves with the speech. |
 | `cts.lib` | The conversion, in 1802 assembly language, for other programs. |
 | `tools/` | Python tools that test the conversion against the emulator of the chip. |
 
@@ -38,7 +39,8 @@ You need ElfC on the path, with the
 [ELFC-conio](https://github.com/arhefner/ELFC-conio) libraries installed in
 it, as for [SP0256-AL2](../SP0256-AL2), and Asm/02. `cts.lib` needs Link/02
 1.14 or later, which links short branches more than 256 bytes into a
-procedure.
+procedure. The talking face of `cts256face` needs the ssd1305 library of
+ELFC-GPIO, as `sayface` of SP0256-AL2 does, see its README.
 
 ```
 make                     build the say library, cts.lib and cts256 for Elf/OS
@@ -52,14 +54,23 @@ repository, which has `say_ready`, so if an older `say.lib` is installed in
 ElfC, install the new one with `make install` there, as ElfC looks in its
 own folders first.
 
-`cts256.elfos` is for Elf/OS and `cts256` for ELF-DOS, in `programs/`.
-They are about 27K.
+`cts256.elfos` and `cts256face.elfos` are for Elf/OS, and `cts256` and
+`cts256face` for ELF-DOS, in `programs/`. `cts256` is 23K for ELF-DOS and
+21K for Elf/OS, `cts256face` 32K.
+
+`cts256` fits on an Elf with 32K of RAM, where ELF-DOS leaves 29311 bytes
+for a program. With an exception EPROM image of 4K it uses up to 7C14
+there, 875 bytes below the top. It prints with `cputs` and not `printf`,
+and reads typed lines with `gets` and not `cgetline`, which would leave no
+room for the image.
 
 ## cts256
 
 ```
 cts256 [-x file] [-o file] [-p] [-q] [text ...]
 cts256 [-x file] [-o file] [-p] [-q] -f file
+cts256face [-x file] [-o file] [-p] [-q] [text ...]
+cts256face [-x file] [-o file] [-p] [-q] -f file
 ```
 
 Speaks the text on the command line, the text of a file, or, with
@@ -90,16 +101,29 @@ text is pronounced without the chip:
 HH1 EH LL OW PA2 WW ER1 LL PA2 DD1 PA5 PA5 PA3
 ```
 
-With no text, `cts256` speaks each line as it is typed. Enter on an empty
-line says the last one again, and Ctrl-C quits. The lines can be edited,
-and the up and down arrows recall the ones before, with `cgetline` of the
-conio library.
+With no text, the lines typed at the console are spoken as they are
+typed. `cts256` reads them with the line input of the operating system,
+and an empty line quits. `cts256face` reads them with `cgetline` of the
+conio library: they can be edited, the up and down arrows recall the ones
+before, Enter on an empty line says the last one again, and Ctrl-C quits.
+
+`cts256face` draws the face of `sayface` of [SP0256-AL2](../SP0256-AL2) on
+the SSD1305 display on the SPI adapter, and moves its mouth with the
+speech. It does not draw it with `-q` or `-o`, as the face moves with the
+speech. The ports of the adapter are those of the 1802/MAX, port 2 and 3
+of group 0; build with `make SPI_GROUP=0 SPI_CTL=2 SPI_DATA=3` for other
+ones.
 
 The allophones are given to the chip while the text after them is being
 converted, every few rules, as the chip does with an interrupt, so the
 speech does not stop between words. At 4 MHz the SP0256-AL2 is never kept
-waiting. At 1.79 MHz it waits now and then, for up to 25 ms, mostly in the
-pauses: in the Run/02 emulator, 9 times in two minutes of speech.
+waiting. At 1.79 MHz it waits now and then, for up to 45 ms, mostly in the
+pauses: in the Run/02 emulator, about 10 times in two minutes of speech.
+
+The face of `cts256face` takes time too. At 4 MHz the speech is still
+never held up, and a mouth is on the display about 5 ms after its
+allophone begins. At 1.79 MHz the speech waits more often, and a mouth
+can come late, so `cts256face` is for an Elf at 4 MHz.
 
 ## How text is converted
 
