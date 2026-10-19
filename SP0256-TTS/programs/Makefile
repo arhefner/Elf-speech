@@ -4,11 +4,11 @@ CC := elfc
 SAY := ../../SP0256-AL2
 CTS := ../../CTS256A-AL2
 
-# -M links the smaller stdlib and stdio of ElfC, so that tts fits in 32K.
-# -O is not used: the branch relaxation of Link/02 1.14 -r changes the low
-# bytes of local addresses in cts.lib and dict.lib (v records), see the
-# README.  Add it with a Link/02 that has the fix.
-CFLAGS := -M -i ../include -i $(SAY)/include -i $(CTS)/include \
+# -M links the smaller stdlib and stdio of ElfC, and -O shortens the long
+# branches, so that tts fits in 32K.  -O needs a Link/02 that places the
+# low bytes of local addresses (v records) right when it relaxes a proc,
+# as cts.lib and dict.lib have them, see the README.
+CFLAGS := -M -O -i ../include -i $(SAY)/include -i $(CTS)/include \
           -l ../lib -l $(SAY)/lib -l $(CTS)/lib
 
 # The operating system to build for:
